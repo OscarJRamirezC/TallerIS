@@ -1,0 +1,51 @@
+@startuml Diagrama_Casos_de_Uso
+
+skinparam actorStyle awesome
+skinparam usecase {
+    BackgroundColor #F0F8FF
+    BorderColor #4682B4
+    ArrowColor #4682B4
+}
+
+title Diagrama de Casos de Uso - Sistema de Autenticación y Carga de Datos
+
+actor "Usuario" as user
+
+rectangle "Sistema de Autenticación y Carga de Datos" {
+
+    usecase "CU-01\nIniciar Sesión" as UC1
+    usecase "CU-02\nSeleccionar Método\nde Autenticación" as UC2
+    usecase "CU-03\nValidar Credenciales\nvía XML" as UC3
+    usecase "CU-04\nValidar Credenciales\nvía Base de Datos" as UC4
+    usecase "CU-05\nValidar Credenciales\nvía Web Service" as UC5
+    usecase "CU-06\nConfirmar Carga\nde Información" as UC6
+    usecase "CU-07\nLeer Datos\ndesde CSV" as UC7
+    usecase "CU-08\nGuardar Datos\nen Base de Datos" as UC8
+    usecase "CU-09\nEnviar Correo\nde Notificación" as UC9
+    usecase "CU-10\nCerrar Sesión" as UC10
+
+    user --> UC1
+    user --> UC6
+    user --> UC10
+
+    UC1 ..> UC2 : <<include>>
+
+    UC2 ..> UC3 : <<extend>>
+    UC2 ..> UC4 : <<extend>>
+    UC2 ..> UC5 : <<extend>>
+
+    UC6 ..> UC7 : <<include>>
+    UC7 ..> UC8 : <<include>>
+    UC8 ..> UC9 : <<include>>
+}
+
+actor "Servidor BD" as db
+actor "Servidor SMTP" as smtp
+actor "Web Service\nExterno" as ws
+
+UC4 --> db
+UC8 --> db
+UC5 --> ws
+UC9 --> smtp
+
+@enduml

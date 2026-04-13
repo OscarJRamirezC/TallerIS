@@ -1,0 +1,107 @@
+@startuml Diagrama_Secuencia
+
+skinparam sequence {
+    ArrowColor #4682B4
+    LifeLineBorderColor #4682B4
+    ParticipantBackgroundColor #F0F8FF
+    ParticipantBorderColor #4682B4
+}
+
+title Diagrama de Secuencia - Flujo Principal del Sistema
+
+actor Usuario as user
+participant "ConsoleView" as view
+participant "AppController" as app
+participant "AuthController" as auth
+participant "<<AuthStrategy>>\nImplementación" as strategy
+participant "DataProcessController" as dataCtrl
+participant "CSVReader" as csv
+participant "DataService" as dataSvc
+participant "EmailService" as email
+
+== Fase de Autenticación ==
+
+user -> view : Inicia aplicación
+activate view
+
+view -> view : mostrarBienvenida()
+view -> user : "Bienvenido al Sistema"
+view -> user : "Ingrese su usuario:"
+user -> view : usuario
+view -> user : "Ingrese su contraseña:"
+user -> view : password
+
+view -> app : procesarAutenticacion(usuario, password)
+activate app
+
+app -> auth : autenticar(usuario, password)
+activate auth
+
+auth -> strategy : validate(usuario, password)
+activate strategy
+
+alt Autenticación vía XML
+    strategy -> strategy : parsearXML()
+    strategy -> strategy : buscarUsuario()
+else Autenticación vía BD
+    strategy -> strategy : conectar()
+    strategy -> strategy : consultarUsuario()
+else Autenticación vía Web Service
+    strategy -> strategy : enviarPeticion()
+    strategy -> strategy : parsearRespuesta()
+end
+
+strategy --> auth : resultado: boolean
+deactivate strategy
+
+auth --> app : autenticado: boolean
+deactivate auth
+
+alt Autenticación exitosa
+    app -> view : mostrarMensaje("Autenticación exitosa")
+    view -> user : "Autenticación exitosa"
+
+    == Fase de Carga de Datos ==
+
+    view -> user : "¿Desea cargar la información? (S/N)"
+    user -> view : respuesta
+
+    alt respuesta == "S"
+        app -> dataCtrl : ejecutarProcesoCarga(rutaArchivo)
+        activate dataCtrl
+
+        dataCtrl -> csv : leer(rutaArchivo)
+        activate csv
+        csv --> dataCtrl : datos: List<String[]>
+        deactivate csv
+
+        dataCtrl -> dataSvc : guardar(datos)
+        activate dataSvc
+        dataSvc --> dataCtrl : guardado: boolean
+        deactivate dataSvc
+
+        dataCtrl -> email : enviar(destinatario, asunto, cuerpo)
+        activate email
+        email --> dataCtrl : enviado: boolean
+        deactivate email
+
+        dataCtrl --> app : resultado: ResultadoProceso
+        deactivate dataCtrl
+
+        app -> view : mostrarResultadoProceso(resultado)
+        view -> user : "Proceso completado:\nRegistros: N\nEstado: OK\nCorreo enviado: Sí"
+
+    else respuesta == "N"
+        app -> view : mostrarMensaje("Operación cancelada")
+        view -> user : "Operación cancelada por el usuario"
+    end
+
+else Autenticación fallida
+    app -> view : mostrarError("Credenciales inválidas")
+    view -> user : "Error: Credenciales inválidas"
+end
+
+deactivate app
+deactivate view
+
+@enduml

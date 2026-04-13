@@ -1,0 +1,76 @@
+@startuml Diagrama_Arquitectura
+
+skinparam component {
+    BackgroundColor #F0F8FF
+    BorderColor #4682B4
+}
+
+title Diagrama de Arquitectura por Capas - Sistema de Autenticación y Carga de Datos
+
+rectangle "CAPA DE PRESENTACIÓN (CLI)" as presentacion #EEFFEE {
+    component [AppMain] as main
+    component [ConsoleView] as view
+    note right of view
+        Responsable de toda la
+        interacción con el usuario
+        a través de la consola (CMD)
+    end note
+}
+
+rectangle "CAPA DE LÓGICA DE NEGOCIO" as negocio #FFFFEE {
+    component [AppController] as appCtrl
+    component [AuthController] as authCtrl
+    component [DataProcessController] as dataCtrl
+    component [ResultadoProceso] as resultado
+}
+
+rectangle "CAPA DE ESTRATEGIAS DE AUTENTICACIÓN" as autenticacion #FFF0EE {
+    interface "AuthStrategy" as authIface
+    component [XMLAuth] as xmlAuth
+    component [DBAuth] as dbAuth
+    component [WebServiceAuth] as wsAuth
+
+    authIface -- xmlAuth
+    authIface -- dbAuth
+    authIface -- wsAuth
+}
+
+rectangle "CAPA DE ACCESO A DATOS" as datos #F0EEFF {
+    component [CSVReader] as csv
+    component [DataService] as dataSvc
+}
+
+rectangle "CAPA DE SERVICIOS EXTERNOS" as servicios #FFEEFF {
+    component [EmailService] as email
+}
+
+' === Sistemas externos ===
+database "Base de Datos" as bd
+cloud "Servidor SMTP" as smtp
+cloud "Web Service Externo" as wsExt
+file "Archivo XML\n(Credenciales)" as xmlFile
+file "Archivo CSV\n(Datos)" as csvFile
+
+' === Relaciones entre capas ===
+main --> appCtrl
+view --> appCtrl
+
+appCtrl --> authCtrl
+appCtrl --> dataCtrl
+
+authCtrl --> authIface
+
+dataCtrl --> csv
+dataCtrl --> dataSvc
+dataCtrl --> email
+dataCtrl --> resultado
+
+' === Relaciones con sistemas externos ===
+xmlAuth --> xmlFile
+dbAuth --> bd
+wsAuth --> wsExt
+csv --> csvFile
+dataSvc --> bd
+email --> smtp
+
+@enduml
