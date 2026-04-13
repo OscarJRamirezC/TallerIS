@@ -1,0 +1,224 @@
+@startuml Diagrama_Clases
+
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #F0F8FF
+    BorderColor #4682B4
+    ArrowColor #333333
+}
+
+title Diagrama de Clases - Sistema de Autenticación y Carga de Datos
+
+' ============================================================
+' CAPA DE PRESENTACIÓN
+' ============================================================
+package "Presentación (CLI)" #EEFFEE {
+
+    class AppMain {
+        + {static} main(args: String[]): void
+    }
+
+    class ConsoleView {
+        - scanner: Scanner
+        + mostrarBienvenida(): void
+        + solicitarUsuario(): String
+        + solicitarPassword(): String
+        + preguntarCargaInformacion(): boolean
+        + mostrarMensaje(mensaje: String): void
+        + mostrarError(error: String): void
+        + mostrarResultadoProceso(resultado: String): void
+        + cerrar(): void
+    }
+}
+
+' ============================================================
+' CAPA DE LÓGICA DE NEGOCIO
+' ============================================================
+package "Lógica de Negocio" #FFFFEE {
+
+    class AppController {
+        - authController: AuthController
+        - dataProcessController: DataProcessController
+        - consoleView: ConsoleView
+        + AppController()
+        + ejecutar(): void
+        - procesarAutenticacion(): boolean
+        - procesarCargaDatos(): void
+    }
+
+    class AuthController {
+        - estrategia: AuthStrategy
+        + AuthController(estrategia: AuthStrategy)
+        + setEstrategia(estrategia: AuthStrategy): void
+        + getEstrategia(): AuthStrategy
+        + autenticar(usuario: String, password: String): boolean
+    }
+
+    class DataProcessController {
+        - csvReader: CSVReader
+        - dataService: DataService
+        - emailService: EmailService
+        + DataProcessController(csvReader: CSVReader, dataService: DataService, emailService: EmailService)
+        + ejecutarProcesoCarga(rutaArchivo: String): ResultadoProceso
+    }
+
+    class ResultadoProceso {
+        - exitoso: boolean
+        - registrosProcesados: int
+        - errores: List<String>
+        - fechaProceso: Date
+        + ResultadoProceso()
+        + isExitoso(): boolean
+        + getRegistrosProcesados(): int
+        + getErrores(): List<String>
+        + getFechaProceso(): Date
+        + getResumen(): String
+    }
+}
+
+' ============================================================
+' CAPA DE ESTRATEGIAS DE AUTENTICACIÓN (Strategy Pattern)
+' ============================================================
+package "Autenticación (Strategy Pattern)" #FFF0EE {
+
+    interface AuthStrategy <<interface>> {
+        + validate(usuario: String, password: String): boolean
+    }
+
+    class XMLAuth {
+        - rutaArchivoXML: String
+        + XMLAuth(rutaArchivoXML: String)
+        + validate(usuario: String, password: String): boolean
+        - parsearXML(): Document
+        - buscarUsuario(doc: Document, usuario: String): Element
+    }
+
+    class DBAuth {
+        - conexion: Connection
+        - urlBD: String
+        + DBAuth(urlBD: String)
+        + validate(usuario: String, password: String): boolean
+        - conectar(): Connection
+        - desconectar(): void
+    }
+
+    class WebServiceAuth {
+        - urlServicio: String
+        - httpClient: HttpClient
+        + WebServiceAuth(urlServicio: String)
+        + validate(usuario: String, password: String): boolean
+        - enviarPeticion(usuario: String, password: String): Response
+        - parsearRespuesta(response: Response): boolean
+    }
+}
+
+' ============================================================
+' CAPA DE ACCESO A DATOS
+' ============================================================
+package "Acceso a Datos" #F0EEFF {
+
+    interface ICSVReader <<interface>> {
+        + leer(rutaArchivo: String): List<String[]>
+    }
+
+    class CSVReader {
+        - separador: char
+        - tieneEncabezado: boolean
+        + CSVReader(separador: char, tieneEncabezado: boolean)
+        + leer(rutaArchivo: String): List<String[]>
+        - parsearLinea(linea: String): String[]
+        - validarArchivo(rutaArchivo: String): boolean
+    }
+
+    interface IDataService <<interface>> {
+        + guardar(datos: List<String[]>): boolean
+        + guardarLote(datos: List<String[]>, tamanoLote: int): boolean
+    }
+
+    class DataService {
+        - conexion: Connection
+        - urlBD: String
+        - nombreTabla: String
+        + DataService(urlBD: String, nombreTabla: String)
+        + guardar(datos: List<String[]>): boolean
+        + guardarLote(datos: List<String[]>, tamanoLote: int): boolean
+        - conectar(): Connection
+        - desconectar(): void
+        - crearInsert(registro: String[]): PreparedStatement
+    }
+}
+
+' ============================================================
+' CAPA DE SERVICIOS EXTERNOS
+' ============================================================
+package "Servicios Externos" #FFEEFF {
+
+    interface IEmailService <<interface>> {
+        + enviar(destinatario: String, asunto: String, cuerpo: String): boolean
+    }
+
+    class EmailService {
+        - servidorSMTP: String
+        - puerto: int
+        - remitente: String
+        - password: String
+        + EmailService(servidorSMTP: String, puerto: int, remitente: String, password: String)
+        + enviar(destinatario: String, asunto: String, cuerpo: String): boolean
+        - configurarSesion(): Session
+        - construirMensaje(sesion: Session, destinatario: String, asunto: String, cuerpo: String): Message
+    }
+}
+
+' ============================================================
+' MODELO DE DATOS
+' ============================================================
+package "Modelo" #F5F5F5 {
+
+    class Usuario {
+        - nombre: String
+        - password: String
+        - email: String
+        + Usuario(nombre: String, password: String, email: String)
+        + getNombre(): String
+        + getPassword(): String
+        + getEmail(): String
+    }
+}
+
+' ============================================================
+' RELACIONES
+' ============================================================
+
+' Composición y dependencia desde AppMain
+AppMain ..> AppController : <<crea>>
+
+' AppController compone las dependencias
+AppController *-- ConsoleView
+AppController *-- AuthController
+AppController *-- DataProcessController
+
+' AuthController usa Strategy
+AuthController o-- AuthStrategy : estrategia
+
+' Implementaciones del patrón Strategy
+AuthStrategy <|.. XMLAuth
+AuthStrategy <|.. DBAuth
+AuthStrategy <|.. WebServiceAuth
+
+' DataProcessController compone servicios
+DataProcessController *-- CSVReader
+DataProcessController *-- DataService
+DataProcessController *-- EmailService
+
+' Interfaces implementadas
+ICSVReader <|.. CSVReader
+IDataService <|.. DataService
+IEmailService <|.. EmailService
+
+' DataProcessController produce ResultadoProceso
+DataProcessController ..> ResultadoProceso : <<crea>>
+
+' DBAuth y DataService dependen de modelo
+DBAuth ..> Usuario : <<usa>>
+
+@enduml
